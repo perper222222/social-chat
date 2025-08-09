@@ -8,6 +8,12 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import dynamic from "next/dynamic";
+
+// 动态导入按钮（禁用 SSR）
+const ExportButton = dynamic(() => import("../components/ExportButton"), {
+  ssr: false
+});
 
 export default function Home() {
   const [userId, setUserId] = useState("");
@@ -41,38 +47,6 @@ export default function Home() {
     setMessage("");
   };
 
-  // CSV 내보내기 (클라이언트 환경에서만 실행)
-  const exportToCSV = () => {
-    if (typeof window === "undefined") return; // SSR 방지
-    if (messages.length === 0) return;
-
-    const headers = ["ID", "사용자ID", "메시지", "시간"];
-    const rows = messages.map(m => [
-      m.id,
-      m.userId,
-      m.text,
-      m.timestamp
-        ? new Date(
-            m.timestamp.seconds
-              ? m.timestamp.seconds * 1000
-              : m.timestamp
-          ).toLocaleString()
-        : ""
-    ]);
-
-    let csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers, ...rows].map(e => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "chat_data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   if (!entered) {
     return (
       <div className="flex flex-col items-center mt-20 space-y-4">
@@ -100,7 +74,11 @@ export default function Home() {
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
               {m.timestamp
-                ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
+                ? new Date(
+                    m.timestamp.seconds
+                      ? m.timestamp.seconds * 1000
+                      : m.timestamp
+                  ).toLocaleString()
                 : ""}
             </div>
             <div>
@@ -123,12 +101,8 @@ export default function Home() {
         >
           보내기
         </button>
-        <button
-          onClick={exportToCSV}
-          className="bg-yellow-500 text-white px-4 py-2 rounded"
-        >
-          내보내기
-        </button>
+        {/* 내보내기 버튼（仅客户端渲染） */}
+        <ExportButton messages={messages} />
       </div>
     </div>
   );
