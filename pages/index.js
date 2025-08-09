@@ -14,7 +14,6 @@ import {
   arrayUnion,
   arrayRemove,
   serverTimestamp,
-  collectionGroup,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -23,11 +22,10 @@ export default function Home() {
   const [entered, setEntered] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [commentInputs, setCommentInputs] = useState({}); // { msgId: commentText }
-  const [openComments, setOpenComments] = useState({}); // { msgId: true/false }
-  const [commentsData, setCommentsData] = useState({}); // { msgId: [comments] }
+  const [commentInputs, setCommentInputs] = useState({});
+  const [openComments, setOpenComments] = useState({});
+  const [commentsData, setCommentsData] = useState({});
 
-  // 监听消息列表
   useEffect(() => {
     if (!entered) return;
 
@@ -43,11 +41,21 @@ export default function Home() {
     return () => unsubscribe();
   }, [entered]);
 
-  // 监听所有已展开消息的评论
   useEffect(() => {
     if (!entered) return;
 
-    // 订阅所有打开的消息评论
+    // 默认全部评论展开
+    setOpenComments(
+      messages.reduce((acc, msg) => {
+        acc[msg.id] = true;
+        return acc;
+      }, {})
+    );
+  }, [messages, entered]);
+
+  useEffect(() => {
+    if (!entered) return;
+
     const unsubscribes = Object.entries(openComments)
       .filter(([, isOpen]) => isOpen)
       .map(([msgId]) => {
@@ -69,7 +77,6 @@ export default function Home() {
     };
   }, [openComments, entered]);
 
-  // 发送消息
   const sendMessage = async () => {
     if (!message.trim()) return;
 
@@ -82,7 +89,6 @@ export default function Home() {
     setMessage("");
   };
 
-  // 点赞/取消点赞
   const toggleLike = async (msg) => {
     const msgRef = doc(db, "messages", msg.id);
     const hasLiked = msg.likes?.includes(userId);
@@ -98,25 +104,35 @@ export default function Home() {
     }
   };
 
-  // 发送评论
   const sendComment = async (msgId) => {
     const text = commentInputs[msgId]?.trim();
     if (!text) return;
 
-    await addDoc(collection(db, "messages", msgId, "comments"), {
-      userId,
-      text,
-      timestamp: serverTimestamp(),
-    });
-
-    setCommentInputs((prev) => ({ ...prev, [msgId]: "" }));
+    try {
+      await addDoc(collection(db, "messages", msgId, "comments"), {
+        userId,
+        text,
+        timestamp: serverTimestamp(),
+      });
+      setCommentInputs((prev) => ({ ...prev, [msgId]: "" }));
+    } catch (error) {
+      console.error("댓글 전송 실패:", error);
+      alert("댓글 전송 중 오류가 발생했습니다.");
+    }
   };
 
-  // 下载聊天记录CSV（只包括主消息）
   const downloadChat = () => {
     if (messages.length === 0) return;
 
-    const header = ['시간', '사용자ID', '메시지', '좋아요수'];
+    const maxComments = Math.max(
+      ...messages.map((m) => commentsData[m.id]?.length || 0)
+    );
+
+    const header = ['시간', '사용자ID', '메시지', '좋아요수', '댓글수'];
+
+    for (let i = 1; i <= maxComments; i++) {
+      header.push(`댓글${i}`);
+    }
 
     const escapeCsv = (text) => {
       if (!text) return "";
@@ -137,7 +153,22 @@ export default function Home() {
                 : m.timestamp
             ).toLocaleString()
           : "";
-        return [time, m.userId, m.text, m.likes?.length || 0].map(escapeCsv).join(',');
+        const commentList = commentsData[m.id] || [];
+        const commentCount = commentList.length;
+        const commentTexts = commentList.map(
+          (c) => `[${c.userId}] ${c.text}`
+        );
+        while (commentTexts.length < maxComments) {
+          commentTexts.push('');
+        }
+        return [
+          time,
+          m.userId,
+          m.text,
+          m.likes?.length || 0,
+          commentCount,
+          ...commentTexts,
+        ].map(escapeCsv).join(',');
       }),
     ];
 
@@ -153,7 +184,6 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  // 删除聊天记录
   const clearChat = async () => {
     const pwd = prompt(
       "채팅 기록을 삭제하려면 비밀번호를 입력하세요.\n(주의: 삭제 후 복구 불가)"
@@ -168,7 +198,6 @@ export default function Home() {
     }
 
     try {
-      // 先删除所有评论子集合里的文档（简化起见不深度递归）
       for (const msg of messages) {
         const commSnap = await getDocs(collection(db, "messages", msg.id, "comments"));
         const deleteComms = commSnap.docs.map((docSnap) =>
@@ -177,7 +206,6 @@ export default function Home() {
         await Promise.all(deleteComms);
       }
 
-      // 删除所有主消息
       const snapshot = await getDocs(collection(db, "messages"));
       const deletePromises = snapshot.docs.map((docSnap) =>
         deleteDoc(doc(db, "messages", docSnap.id))
@@ -217,14 +245,14 @@ export default function Home() {
       <div className="flex justify-between items-center p-4 border-b">
         <button
           onClick={downloadChat}
-          className="bg-gray-700 text-white px-4 py-1 rounded hover:bg-gray-800"
+          className="bg-gray-500 text-white px-4 py-1 rounded hover:bg-gray-600"
         >
           다운로드
         </button>
         <div className="flex items-center space-x-2">
           <button
             onClick={clearChat}
-            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+            className="bg-red-400 text-white px-3 py-1 rounded hover:bg-red-500"
           >
             채팅 기록 삭제
           </button>
@@ -253,8 +281,8 @@ export default function Home() {
                 className={`max-w-[70%] px-4 py-2 rounded-lg break-words whitespace-pre-wrap
                   ${
                     isOwnMessage
-                      ? "bg-green-500 text-white rounded-br-none"
-                      : "bg-gray-300 text-gray-900 rounded-bl-none"
+                      ? "bg-green-200 text-gray-900 rounded-br-none"
+                      : "bg-gray-200 text-gray-900 rounded-bl-none"
                   }`}
               >
                 <div className="text-xs opacity-70 mb-1">{m.userId}</div>
@@ -269,7 +297,6 @@ export default function Home() {
                     : ""}
                 </div>
 
-                {/* 点赞按钮 */}
                 <div className="flex items-center space-x-1 mt-2 cursor-pointer select-none">
                   <button
                     onClick={() => toggleLike(m)}
@@ -283,7 +310,6 @@ export default function Home() {
                   <span className="text-xs text-gray-600">{m.likes?.length || 0}</span>
                 </div>
 
-                {/* 评论展开按钮 */}
                 <button
                   onClick={() =>
                     setOpenComments((prev) => ({
@@ -296,7 +322,6 @@ export default function Home() {
                   {openComments[m.id] ? "댓글 숨기기" : "댓글 보기"}
                 </button>
 
-                {/* 评论区 */}
                 {openComments[m.id] && (
                   <div className="mt-2 border-t border-gray-400 pt-2 max-h-48 overflow-y-auto text-left">
                     {(commentsData[m.id]?.length ?? 0) === 0 && (
@@ -319,7 +344,6 @@ export default function Home() {
                       </div>
                     ))}
 
-                    {/* 评论输入 */}
                     <div className="flex space-x-2 mt-1">
                       <input
                         type="text"
