@@ -43,20 +43,15 @@ export default function Home() {
     setMessage("");
   };
 
-  // CSV格式下载函数
   const downloadChat = () => {
     if (messages.length === 0) return;
 
-    // CSV头部
     const header = ["시간", "사용자ID", "메시지"].join(",") + "\n";
 
-    // CSV正文，注意内容如果有逗号或换行，使用双引号包裹，并且双引号要转义成双双引号
     const rows = messages.map((m) => {
       const time = m.timestamp
         ? new Date(
-            m.timestamp.seconds
-              ? m.timestamp.seconds * 1000
-              : m.timestamp
+            m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp
           ).toLocaleString()
         : "";
       const user = m.userId.replace(/"/g, '""');
@@ -105,7 +100,7 @@ export default function Home() {
 
   if (!entered) {
     return (
-      <div className="flex flex-col items-center mt-20 space-y-4 max-w-md mx-auto px-4">
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4 max-w-md mx-auto">
         <p className="text-gray-600 mb-2">이 채팅방은 익명 채팅방입니다.</p>
         <input
           type="text"
@@ -129,14 +124,14 @@ export default function Home() {
       className="flex flex-col fixed bottom-10 left-0 right-0 mx-auto space-y-4 px-4 bg-white border rounded shadow-lg"
       style={{
         maxHeight: "80vh",
-        width: "100%",
-        maxWidth: "100%",
+        width: "100vw",
+        maxWidth: "100vw",
         marginLeft: "auto",
         marginRight: "auto",
       }}
     >
       {/* 下载 & 清除按钮 */}
-      <div className="flex justify-between items-center mb-2 max-w-screen-lg mx-auto">
+      <div className="flex justify-between items-center mb-2 max-w-full mx-auto px-4">
         <button
           onClick={downloadChat}
           className="bg-gray-700 text-white px-4 py-1 rounded hover:bg-gray-800"
@@ -158,7 +153,7 @@ export default function Home() {
 
       {/* 聊天框 */}
       <div
-        className="border p-4 overflow-y-auto flex-grow max-w-screen-lg mx-auto"
+        className="border p-4 overflow-y-auto flex-grow max-w-full mx-auto"
         style={{ minHeight: "300px", maxHeight: "calc(80vh - 120px)" }}
       >
         {messages.length === 0 && (
@@ -183,7 +178,7 @@ export default function Home() {
       </div>
 
       {/* 输入框和发送按钮 */}
-      <div className="flex space-x-2 max-w-screen-lg mx-auto">
+      <div className="flex space-x-2 max-w-full mx-auto px-4">
         <input
           type="text"
           placeholder="메시지를 입력하세요..."
