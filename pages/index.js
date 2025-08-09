@@ -1,116 +1,20 @@
-import { useState, useEffect } from "react";
-import {
-  collection,
-  query,
-  orderBy,
-  addDoc,
-  onSnapshot,
-  getDocs,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
-import { db } from "../lib/firebase";
-
 export default function Home() {
-  const [userId, setUserId] = useState("");
-  const [entered, setEntered] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([]);
-
-  useEffect(() => {
-    if (!entered) return;
-
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setMessages(msgs);
-    });
-
-    return () => unsubscribe();
-  }, [entered]);
-
-  const sendMessage = async () => {
-    if (!message.trim()) return;
-
-    await addDoc(collection(db, "messages"), {
-      userId,
-      text: message,
-      timestamp: new Date(),
-    });
-    setMessage("");
-  };
-
-  const downloadChat = () => {
-    if (messages.length === 0) return;
-
-    const chatText = messages
-      .map((m) => {
-        const time = m.timestamp
-          ? new Date(
-              m.timestamp.seconds
-                ? m.timestamp.seconds * 1000
-                : m.timestamp
-            ).toLocaleString()
-          : "";
-        return `[${time}] ${m.userId}: ${m.text}`;
-      })
-      .join("\n");
-
-    const blob = new Blob([chatText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "chat_history.txt";
-    a.click();
-
-    URL.revokeObjectURL(url);
-  };
-
-  // 清除聊天记录函数
-  const clearChat = async () => {
-    const pwd = prompt(
-      "채팅 기록을 삭제하려면 비밀번호를 입력하세요.\n(주의: 삭제 후 복구 불가)"
-    );
-    if (pwd !== "perper222222") {
-      alert("비밀번호가 틀렸습니다. 삭제를 취소합니다.");
-      return;
-    }
-
-    if (!window.confirm("정말로 모든 채팅 기록을 삭제하시겠습니까?")) {
-      return;
-    }
-
-    try {
-      const snapshot = await getDocs(collection(db, "messages"));
-      const deletePromises = snapshot.docs.map((docSnap) =>
-        deleteDoc(doc(db, "messages", docSnap.id))
-      );
-      await Promise.all(deletePromises);
-      alert("모든 채팅 기록이 삭제되었습니다.");
-    } catch (error) {
-      console.error("삭제 중 오류 발생:", error);
-      alert("채팅 기록 삭제 중 오류가 발생했습니다.");
-    }
-  };
+  // ... 你的state和逻辑保持不变
 
   if (!entered) {
     return (
-      <div className="flex flex-col items-center mt-20 space-y-4 max-w-md mx-auto px-4">
+      <div className="flex flex-col justify-center items-center min-h-screen px-4">
         <p className="text-gray-600 mb-2">이 채팅방은 익명 채팅방입니다.</p>
         <input
           type="text"
           placeholder="숫자 신분 ID를 입력하세요"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
-          className="border p-2 rounded w-full"
+          className="border p-2 rounded w-full max-w-md"
         />
         <button
           onClick={() => setEntered(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded w-full"
+          className="bg-blue-500 text-white px-4 py-2 rounded w-full max-w-md mt-4"
         >
           채팅 입장
         </button>
@@ -120,11 +24,11 @@ export default function Home() {
 
   return (
     <div
-      className="flex flex-col w-1/2 fixed bottom-10 left-1/2 transform -translate-x-1/2 space-y-4 px-4 bg-white border rounded shadow-lg"
-      style={{ maxHeight: "80vh" }}
+      className="fixed top-0 left-0 w-full h-full flex flex-col bg-white border shadow-lg"
+      style={{ maxHeight: "100vh" }}
     >
       {/* 下载 & 清除按钮 */}
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center p-4 border-b">
         <button
           onClick={downloadChat}
           className="bg-gray-700 text-white px-4 py-1 rounded hover:bg-gray-800"
@@ -146,8 +50,8 @@ export default function Home() {
 
       {/* 聊天框 */}
       <div
-        className="border p-4 overflow-y-auto flex-grow"
-        style={{ minHeight: "300px", maxHeight: "calc(80vh - 120px)" }}
+        className="flex-grow overflow-y-auto p-4"
+        style={{ minHeight: 0 }}
       >
         {messages.length === 0 && (
           <p className="text-center text-gray-400 mt-10">채팅 기록이 없습니다.</p>
@@ -171,7 +75,7 @@ export default function Home() {
       </div>
 
       {/* 输入框和发送按钮 */}
-      <div className="flex space-x-2">
+      <div className="flex space-x-2 p-4 border-t">
         <input
           type="text"
           placeholder="메시지를 입력하세요..."
