@@ -4,7 +4,10 @@ import {
   query,
   orderBy,
   addDoc,
-  onSnapshot
+  onSnapshot,
+  getDocs,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -19,9 +22,9 @@ export default function Home() {
 
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
+      const msgs = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setMessages(msgs);
     });
@@ -35,19 +38,22 @@ export default function Home() {
     await addDoc(collection(db, "messages"), {
       userId,
       text: message,
-      timestamp: new Date() // 로컬 시간 우선 사용
+      timestamp: new Date(),
     });
     setMessage("");
   };
 
-  // 채팅 내용 다운로드 함수
   const downloadChat = () => {
     if (messages.length === 0) return;
 
     const chatText = messages
-      .map(m => {
+      .map((m) => {
         const time = m.timestamp
-          ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
+          ? new Date(
+              m.timestamp.seconds
+                ? m.timestamp.seconds * 1000
+                : m.timestamp
+            ).toLocaleString()
           : "";
         return `[${time}] ${m.userId}: ${m.text}`;
       })
@@ -62,6 +68,33 @@ export default function Home() {
     a.click();
 
     URL.revokeObjectURL(url);
+  };
+
+  // 清除聊天记录函数
+  const clearChat = async () => {
+    const pwd = prompt(
+      "채팅 기록을 삭제하려면 비밀번호를 입력하세요.\n(주의: 삭제 후 복구 불가)"
+    );
+    if (pwd !== "perper222222") {
+      alert("비밀번호가 틀렸습니다. 삭제를 취소합니다.");
+      return;
+    }
+
+    if (!window.confirm("정말로 모든 채팅 기록을 삭제하시겠습니까?")) {
+      return;
+    }
+
+    try {
+      const snapshot = await getDocs(collection(db, "messages"));
+      const deletePromises = snapshot.docs.map((docSnap) =>
+        deleteDoc(doc(db, "messages", docSnap.id))
+      );
+      await Promise.all(deletePromises);
+      alert("모든 채팅 기록이 삭제되었습니다.");
+    } catch (error) {
+      console.error("삭제 중 오류 발생:", error);
+      alert("채팅 기록 삭제 중 오류가 발생했습니다.");
+    }
   };
 
   if (!entered) {
@@ -86,24 +119,48 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col w-full mt-10 space-y-4 px-4">
-      {/* 下载按钮 */}
-      <div className="flex justify-end mb-2">
+    <div
+      className="flex flex-col w-1/2 fixed bottom-10 left-1/2 transform -translate-x-1/2 space-y-4 px-4 bg-white border rounded shadow-lg"
+      style={{ maxHeight: "80vh" }}
+    >
+      {/* 下载 & 清除按钮 */}
+      <div className="flex justify-between items-center mb-2">
         <button
           onClick={downloadChat}
           className="bg-gray-700 text-white px-4 py-1 rounded hover:bg-gray-800"
         >
           다운로드
         </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={clearChat}
+            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+          >
+            채팅 기록 삭제
+          </button>
+          <span className="text-sm text-red-500 select-none">
+            클릭하지 마세요
+          </span>
+        </div>
       </div>
 
       {/* 聊天框 */}
-      <div className="border p-4 h-96 overflow-y-auto bg-white w-full">
+      <div
+        className="border p-4 overflow-y-auto flex-grow"
+        style={{ minHeight: "300px", maxHeight: "calc(80vh - 120px)" }}
+      >
+        {messages.length === 0 && (
+          <p className="text-center text-gray-400 mt-10">채팅 기록이 없습니다.</p>
+        )}
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
               {m.timestamp
-                ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
+                ? new Date(
+                    m.timestamp.seconds
+                      ? m.timestamp.seconds * 1000
+                      : m.timestamp
+                  ).toLocaleString()
                 : ""}
             </div>
             <div>
@@ -121,6 +178,9 @@ export default function Home() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           className="border p-2 flex-grow rounded"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") sendMessage();
+          }}
         />
         <button
           onClick={sendMessage}
