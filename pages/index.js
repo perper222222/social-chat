@@ -152,37 +152,57 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 聊天消息区文字居中 */}
-      <div className="flex-grow overflow-y-auto p-4 text-center" style={{ minHeight: 0 }}>
+      <div
+        className="flex-grow overflow-y-auto p-4"
+        style={{ minHeight: 0 }}
+      >
         {messages.length === 0 && (
-          <p className="text-gray-400 mt-10">채팅 기록이 없습니다.</p>
+          <p className="text-center text-gray-400 mt-10">채팅 기록이 없습니다.</p>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className="mb-4 border-b pb-2">
-            <div className="text-xs text-gray-500">
-              {m.timestamp
-                ? new Date(
-                    m.timestamp.seconds
-                      ? m.timestamp.seconds * 1000
-                      : m.timestamp
-                  ).toLocaleString()
-                : ""}
+
+        {messages.map((m, idx) => {
+          const isOwnMessage = m.userId === userId; // 判断是不是自己消息
+          return (
+            <div
+              key={m.id}
+              className={`flex mb-4 ${
+                isOwnMessage ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`max-w-[70%] px-4 py-2 rounded-lg break-words whitespace-pre-wrap
+                  ${
+                    isOwnMessage
+                      ? "bg-green-500 text-white rounded-br-none"
+                      : "bg-gray-300 text-gray-900 rounded-bl-none"
+                  }`}
+              >
+                <div className="text-xs opacity-70 mb-1">
+                  {m.userId}
+                </div>
+                <div>{m.text}</div>
+                <div className="text-xs opacity-50 mt-1 text-right">
+                  {m.timestamp
+                    ? new Date(
+                        m.timestamp.seconds
+                          ? m.timestamp.seconds * 1000
+                          : m.timestamp
+                      ).toLocaleTimeString()
+                    : ""}
+                </div>
+              </div>
             </div>
-            <div className="font-semibold">
-              {m.userId}: {m.text}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* 输入框文字居中 */}
       <div className="flex space-x-2 p-4 border-t">
         <input
           type="text"
           placeholder="메시지를 입력하세요..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="border p-2 flex-grow rounded text-center"
+          className="border p-2 flex-grow rounded text-left"
           onKeyDown={(e) => {
             if (e.key === "Enter") sendMessage();
           }}
