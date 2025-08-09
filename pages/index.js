@@ -1,88 +1,44 @@
+// pages/index.js
 import { useState, useEffect } from "react";
 import {
   collection,
   query,
   orderBy,
-  where,
   addDoc,
-  serverTimestamp,
-  onSnapshot,
-  getDocs
+  onSnapshot
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 export default function Home() {
   const [userId, setUserId] = useState("");
-  const [batchId, setBatchId] = useState(""); 
   const [entered, setEntered] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
-
   useEffect(() => {
     if (!entered) return;
 
-    let q;
-    if (batchId) {
-      q = query(
-        collection(db, "messages"),
-        where("batchId", "==", batchId),
-        orderBy("timestamp", "asc")
-      );
-    } else {
-      q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    }
-
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
+        id: doc.id,
+        ...doc.data()
       }));
       setMessages(msgs);
     });
 
     return () => unsubscribe();
-  }, [entered, batchId]);
+  }, [entered]);
 
   const sendMessage = async () => {
     if (!message.trim()) return;
+
     await addDoc(collection(db, "messages"), {
       userId,
-      batchId: batchId || null,
       text: message,
-      timestamp: serverTimestamp()
+      timestamp: new Date() // 用本地时间先显示
     });
     setMessage("");
-  };
-
-
-  const exportMessages = async () => {
-    let q;
-    if (batchId) {
-      q = query(
-        collection(db, "messages"),
-        where("batchId", "==", batchId),
-        orderBy("timestamp", "asc")
-      );
-    } else {
-      q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    }
-
-    const snapshot = await getDocs(q);
-    const allMsgs = snapshot.docs.map(doc => doc.data());
-
-    const csvHeader = "userId,batchId,text,timestamp\n";
-    const csvRows = allMsgs.map(m =>
-      `${m.userId || ""},${m.batchId || ""},"${m.text || ""}",${m.timestamp?.toDate().toISOString() || ""}`
-    );
-    const csvContent = csvHeader + csvRows.join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "messages.csv");
-    link.click();
   };
 
   if (!entered) {
@@ -93,13 +49,6 @@ export default function Home() {
           placeholder="输入你的数字身份 ID"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
-          className="border p-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="可选：批次 ID"
-          value={batchId}
-          onChange={(e) => setBatchId(e.target.value)}
           className="border p-2 rounded"
         />
         <button
@@ -118,9 +67,9 @@ export default function Home() {
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
-              {m.timestamp?.toDate
-                ? m.timestamp.toDate().toLocaleString()
-                : "发送中..."}
+              {m.timestamp
+                ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
+                : ""}
             </div>
             <div>
               <strong>{m.userId}</strong>: {m.text}
@@ -143,12 +92,6 @@ export default function Home() {
           发送
         </button>
       </div>
-      <button
-        onClick={exportMessages}
-        className="bg-gray-500 text-white px-4 py-2 rounded"
-      >
-        导出消息 CSV
-      </button>
     </div>
   );
 }
