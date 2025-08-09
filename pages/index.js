@@ -152,9 +152,10 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto p-4" style={{ minHeight: 0 }}>
+      {/* 聊天消息区文字居中 */}
+      <div className="flex-grow overflow-y-auto p-4 text-center" style={{ minHeight: 0 }}>
         {messages.length === 0 && (
-          <p className="text-center text-gray-400 mt-10">채팅 기록이 없습니다.</p>
+          <p className="text-gray-400 mt-10">채팅 기록이 없습니다.</p>
         )}
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
@@ -167,20 +168,21 @@ export default function Home() {
                   ).toLocaleString()
                 : ""}
             </div>
-            <div>
-              <strong>{m.userId}</strong>: {m.text}
+            <div className="font-semibold">
+              {m.userId}: {m.text}
             </div>
           </div>
         ))}
       </div>
 
+      {/* 输入框文字居中 */}
       <div className="flex space-x-2 p-4 border-t">
         <input
           type="text"
           placeholder="메시지를 입력하세요..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="border p-2 flex-grow rounded"
+          className="border p-2 flex-grow rounded text-center"
           onKeyDown={(e) => {
             if (e.key === "Enter") sendMessage();
           }}
