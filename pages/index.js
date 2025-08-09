@@ -47,16 +47,22 @@ export default function Home() {
 
   const sendMessage = async () => {
     if (!message.trim()) return;
-    await addDoc(collection(db, "messages"), {
-      userId,
-      sessionId,
-      text: message,
-      timestamp: new Date()
-    });
-    setMessage("");
+    const msgToSend = message.trim();
+    setMessage(""); // 先清空输入框，避免异步问题
+    try {
+      await addDoc(collection(db, "messages"), {
+        userId,
+        sessionId,
+        text: msgToSend,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("메시지 전송 실패:", error);
+      setMessage(msgToSend); // 发送失败时恢复文本
+    }
   };
 
-  // 支持回车发送
+  // 支持回车发送，Shift+Enter换行
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
