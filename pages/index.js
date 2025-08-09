@@ -46,32 +46,31 @@ export default function Home() {
   const downloadChat = () => {
     if (messages.length === 0) return;
 
-    const header = ["시간", "사용자ID", "메시지"].join(",") + "\n";
+    const chatText = messages
+      .map((m) => {
+        const time = m.timestamp
+          ? new Date(
+              m.timestamp.seconds
+                ? m.timestamp.seconds * 1000
+                : m.timestamp
+            ).toLocaleString()
+          : "";
+        return `[${time}] ${m.userId}: ${m.text}`;
+      })
+      .join("\n");
 
-    const rows = messages.map((m) => {
-      const time = m.timestamp
-        ? new Date(
-            m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp
-          ).toLocaleString()
-        : "";
-      const user = m.userId.replace(/"/g, '""');
-      const text = m.text.replace(/"/g, '""');
-      return `"${time}","${user}","${text}"`;
-    });
-
-    const csvContent = header + rows.join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([chatText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "chat_history.csv";
+    a.download = "chat_history.txt";
     a.click();
 
     URL.revokeObjectURL(url);
   };
 
+  // 清除聊天记录函数
   const clearChat = async () => {
     const pwd = prompt(
       "채팅 기록을 삭제하려면 비밀번호를 입력하세요.\n(주의: 삭제 후 복구 불가)"
@@ -100,7 +99,7 @@ export default function Home() {
 
   if (!entered) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4 max-w-md mx-auto">
+      <div className="flex flex-col items-center mt-20 space-y-4 max-w-md mx-auto px-4">
         <p className="text-gray-600 mb-2">이 채팅방은 익명 채팅방입니다.</p>
         <input
           type="text"
@@ -121,17 +120,11 @@ export default function Home() {
 
   return (
     <div
-      className="flex flex-col fixed bottom-10 left-0 right-0 mx-auto space-y-4 px-4 bg-white border rounded shadow-lg"
-      style={{
-        maxHeight: "80vh",
-        width: "100vw",
-        maxWidth: "100vw",
-        marginLeft: "auto",
-        marginRight: "auto",
-      }}
+      className="flex flex-col w-1/2 fixed bottom-10 left-1/2 transform -translate-x-1/2 space-y-4 px-4 bg-white border rounded shadow-lg"
+      style={{ maxHeight: "80vh" }}
     >
       {/* 下载 & 清除按钮 */}
-      <div className="flex justify-between items-center mb-2 max-w-full mx-auto px-4">
+      <div className="flex justify-between items-center mb-2">
         <button
           onClick={downloadChat}
           className="bg-gray-700 text-white px-4 py-1 rounded hover:bg-gray-800"
@@ -153,7 +146,7 @@ export default function Home() {
 
       {/* 聊天框 */}
       <div
-        className="border p-4 overflow-y-auto flex-grow max-w-full mx-auto"
+        className="border p-4 overflow-y-auto flex-grow"
         style={{ minHeight: "300px", maxHeight: "calc(80vh - 120px)" }}
       >
         {messages.length === 0 && (
@@ -178,13 +171,13 @@ export default function Home() {
       </div>
 
       {/* 输入框和发送按钮 */}
-      <div className="flex space-x-2 max-w-full mx-auto px-4">
+      <div className="flex space-x-2">
         <input
           type="text"
           placeholder="메시지를 입력하세요..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="border p-2 rounded flex-grow max-w-[600px]"
+          className="border p-2 flex-grow rounded"
           onKeyDown={(e) => {
             if (e.key === "Enter") sendMessage();
           }}
