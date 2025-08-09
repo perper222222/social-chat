@@ -36,43 +36,50 @@ export default function Home() {
     await addDoc(collection(db, "messages"), {
       userId,
       text: message,
-      timestamp: new Date()
+      timestamp: new Date() // 로컬 시간 사용
     });
     setMessage("");
   };
 
-  const downloadMessagesCSV = () => {
-    const header = "시간,사용자ID,메시지\n";
-    const rows = messages.map(m => {
-      const time = m.timestamp
-        ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
-        : "";
-      const safeText = `"${(m.text || "").replace(/"/g, '""')}"`; // 处理引号
-      return `"${time}","${m.userId}",${safeText}`;
-    });
-    const csvContent = header + rows.join("\n");
+  const exportToCSV = () => {
+    if (messages.length === 0) return;
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    const headers = ["ID", "사용자ID", "메시지", "시간"];
+    const rows = messages.map(m => [
+      m.id,
+      m.userId,
+      m.text,
+      m.timestamp
+        ? new Date(
+            m.timestamp.seconds
+              ? m.timestamp.seconds * 1000
+              : m.timestamp
+          ).toLocaleString()
+        : ""
+    ]);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "채팅기록.csv";
-    a.click();
+    let csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers, ...rows].map(e => e.join(",")).join("\n");
 
-    URL.revokeObjectURL(url);
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "chat_data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (!entered) {
     return (
-      <div className="flex flex-col justify-center items-center h-full space-y-4">
-        <p className="text-gray-600">이 채팅방은 익명 채팅방입니다.</p>
+      <div className="flex flex-col items-center mt-20 space-y-4">
         <input
           type="text"
-          placeholder="숫자 ID를 입력하세요"
+          placeholder="당신의 ID를 입력하세요"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
-          className="border p-2 rounded w-64"
+          className="border p-2 rounded"
         />
         <button
           onClick={() => setEntered(true)}
@@ -85,9 +92,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-full max-w-3xl mx-auto p-4">
-      {/* 聊天内容 */}
-      <div className="border p-4 flex-1 overflow-y-auto bg-white rounded shadow">
+    <div className="flex flex-col max-w-lg mx-auto mt-10 space-y-4">
+      <div className="border p-4 h-96 overflow-y-auto">
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
@@ -101,9 +107,7 @@ export default function Home() {
           </div>
         ))}
       </div>
-
-      {/* 输入框 & 按钮 */}
-      <div className="flex space-x-2 mt-4">
+      <div className="flex space-x-2">
         <input
           type="text"
           placeholder="메시지를 입력하세요..."
@@ -118,10 +122,10 @@ export default function Home() {
           보내기
         </button>
         <button
-          onClick={downloadMessagesCSV}
-          className="bg-gray-500 text-white px-4 py-2 rounded"
+          onClick={exportToCSV}
+          className="bg-yellow-500 text-white px-4 py-2 rounded"
         >
-          다운로드
+          내보내기
         </button>
       </div>
     </div>
