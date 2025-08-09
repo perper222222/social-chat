@@ -1,4 +1,3 @@
-// FILE: pages/index.js
 import { useEffect, useState, useRef } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
