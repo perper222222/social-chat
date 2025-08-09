@@ -86,7 +86,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col max-w-lg mx-auto mt-10 space-y-4 px-4">
+    <div className="flex flex-col w-full mt-10 space-y-4 px-4">
+      {/* 下载按钮 */}
       <div className="flex justify-end mb-2">
         <button
           onClick={downloadChat}
@@ -96,7 +97,8 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="border p-4 h-96 overflow-y-auto bg-white">
+      {/* 聊天框 */}
+      <div className="border p-4 h-96 overflow-y-auto bg-white w-full">
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
@@ -111,6 +113,7 @@ export default function Home() {
         ))}
       </div>
 
+      {/* 输入框和发送按钮 */}
       <div className="flex space-x-2">
         <input
           type="text"
