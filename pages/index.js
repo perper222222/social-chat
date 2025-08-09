@@ -36,34 +36,58 @@ export default function Home() {
     await addDoc(collection(db, "messages"), {
       userId,
       text: message,
-      timestamp: new Date() // 用本地时间先显示
+      timestamp: new Date()
     });
     setMessage("");
   };
 
+  const downloadMessagesCSV = () => {
+    const header = "시간,사용자ID,메시지\n";
+    const rows = messages.map(m => {
+      const time = m.timestamp
+        ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
+        : "";
+      const safeText = `"${(m.text || "").replace(/"/g, '""')}"`; // 处理引号
+      return `"${time}","${m.userId}",${safeText}`;
+    });
+    const csvContent = header + rows.join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "채팅기록.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
   if (!entered) {
     return (
-      <div className="flex flex-col items-center mt-20 space-y-4">
+      <div className="flex flex-col justify-center items-center h-full space-y-4">
+        <p className="text-gray-600">이 채팅방은 익명 채팅방입니다.</p>
         <input
           type="text"
-          placeholder="输入你的数字身份 ID"
+          placeholder="숫자 ID를 입력하세요"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded w-64"
         />
         <button
           onClick={() => setEntered(true)}
           className="bg-blue-500 text-white px-4 py-2 rounded"
         >
-          进入聊天
+          채팅방 입장
         </button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col max-w-lg mx-auto mt-10 space-y-4">
-      <div className="border p-4 h-96 overflow-y-auto">
+    <div className="flex flex-col h-full max-w-3xl mx-auto p-4">
+      {/* 聊天内容 */}
+      <div className="border p-4 flex-1 overflow-y-auto bg-white rounded shadow">
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
@@ -77,10 +101,12 @@ export default function Home() {
           </div>
         ))}
       </div>
-      <div className="flex space-x-2">
+
+      {/* 输入框 & 按钮 */}
+      <div className="flex space-x-2 mt-4">
         <input
           type="text"
-          placeholder="输入消息..."
+          placeholder="메시지를 입력하세요..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           className="border p-2 flex-grow rounded"
@@ -89,7 +115,13 @@ export default function Home() {
           onClick={sendMessage}
           className="bg-green-500 text-white px-4 py-2 rounded"
         >
-          发送
+          보내기
+        </button>
+        <button
+          onClick={downloadMessagesCSV}
+          className="bg-gray-500 text-white px-4 py-2 rounded"
+        >
+          다운로드
         </button>
       </div>
     </div>
