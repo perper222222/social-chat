@@ -41,7 +41,9 @@ export default function Home() {
     setMessage("");
   };
 
+  // CSV 내보내기 (클라이언트 환경에서만 실행)
   const exportToCSV = () => {
+    if (typeof window === "undefined") return; // SSR 방지
     if (messages.length === 0) return;
 
     const headers = ["ID", "사용자ID", "메시지", "시간"];
