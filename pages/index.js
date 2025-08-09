@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   collection,
   query,
@@ -12,15 +12,15 @@ import { db } from "../lib/firebase";
 
 export default function Home() {
   const [userId, setUserId] = useState("");
-  const [sessionId, setSessionId] = useState("");
+  const [sessionId, setSessionId] = useState(""); // 세션 입력
   const [entered, setEntered] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const messagesEndRef = useRef(null);
 
-  // 实时监听同场次消息
+  // 실시간 메시지 구독 (같은 세션만 필터링)
   useEffect(() => {
     if (!entered) return;
+    if (!sessionId.trim()) return;
 
     const q = query(
       collection(db, "messages"),
@@ -34,44 +34,29 @@ export default function Home() {
         ...doc.data()
       }));
       setMessages(msgs);
-      scrollToBottom();
     });
 
     return () => unsubscribe();
   }, [entered, sessionId]);
 
-  // 滚动到底部
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const sendMessage = async () => {
     if (!message.trim()) return;
-    const msgToSend = message.trim();
-    setMessage(""); // 先清空输入框，避免异步问题
-    try {
-      await addDoc(collection(db, "messages"), {
-        userId,
-        sessionId,
-        text: msgToSend,
-        timestamp: new Date()
-      });
-    } catch (error) {
-      console.error("메시지 전송 실패:", error);
-      setMessage(msgToSend); // 发送失败时恢复文本
-    }
+
+    await addDoc(collection(db, "messages"), {
+      userId,
+      sessionId,
+      text: message,
+      timestamp: new Date()
+    });
+    setMessage("");
   };
 
-  // 支持回车发送，Shift+Enter换行
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  // 导出 CSV
+  // CSV 내보내기 (현재 세션 메시지)
   const exportMessages = async () => {
+    if (!sessionId.trim()) {
+      alert("세션 ID를 입력하세요."); 
+      return;
+    }
     const q = query(
       collection(db, "messages"),
       where("sessionId", "==", sessionId),
@@ -82,7 +67,7 @@ export default function Home() {
 
     const csvHeader = "userId,sessionId,text,timestamp\n";
     const csvRows = allMsgs.map(m =>
-      `${m.userId || ""},${m.sessionId || ""},"${m.text || ""}",${m.timestamp?.toISOString ? m.timestamp.toISOString() : new Date(m.timestamp).toISOString()}`
+      `${m.userId || ""},${m.sessionId || ""},"${m.text || ""}",${m.timestamp ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString() : ""}`
     );
     const csvContent = csvHeader + csvRows.join("\n");
 
@@ -90,7 +75,8 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "messages.csv");
+    const fileName = `messages_${sessionId}_${new Date().toISOString()}.csv`;
+    link.setAttribute("download", fileName);
     link.click();
   };
 
@@ -99,26 +85,33 @@ export default function Home() {
       <div className="flex flex-col items-center mt-20 space-y-4 max-w-sm mx-auto">
         <input
           type="text"
-          placeholder="사용자 ID 입력"
+          placeholder="아이디 입력"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           className="border p-2 rounded w-full"
         />
         <input
           type="text"
-          placeholder="세션 ID 입력 (필수)"
+          placeholder="세션 입력"
           value={sessionId}
           onChange={(e) => setSessionId(e.target.value)}
           className="border p-2 rounded w-full"
         />
         <button
           onClick={() => {
-            if (userId.trim() && sessionId.trim()) setEntered(true);
-            else alert("사용자 ID와 세션 ID 모두 입력해주세요.");
+            if (!userId.trim()) {
+              alert("아이디를 입력하세요.");
+              return;
+            }
+            if (!sessionId.trim()) {
+              alert("세션을 입력하세요.");
+              return;
+            }
+            setEntered(true);
           }}
           className="bg-blue-600 text-white px-4 py-2 rounded w-full"
         >
-          입장하기
+          채팅 참여
         </button>
       </div>
     );
@@ -127,44 +120,45 @@ export default function Home() {
   return (
     <div className="flex flex-col max-w-lg mx-auto mt-10 space-y-4">
       <div className="border p-4 h-96 overflow-y-auto">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-500 mt-20">
+            메시지가 없습니다.
+          </div>
+        )}
         {messages.map((m) => (
           <div key={m.id} className="mb-4 border-b pb-2">
             <div className="text-xs text-gray-500">
               {m.timestamp
-                ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString("ko-KR")
-                : "전송 중..."}
+                ? new Date(m.timestamp.seconds ? m.timestamp.seconds * 1000 : m.timestamp).toLocaleString()
+                : ""}
             </div>
             <div>
               <strong>{m.userId}</strong>: {m.text}
             </div>
           </div>
         ))}
-        <div ref={messagesEndRef} />
       </div>
-
-      <textarea
-        rows={2}
-        placeholder="메시지를 입력하세요..."
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className="border p-2 rounded resize-none"
-      />
-
       <div className="flex space-x-2">
+        <input
+          type="text"
+          placeholder="메시지 입력..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          className="border p-2 flex-grow rounded"
+        />
         <button
           onClick={sendMessage}
-          className="bg-green-600 text-white px-4 py-2 rounded flex-grow"
+          className="bg-green-600 text-white px-4 py-2 rounded"
         >
-          전송
-        </button>
-        <button
-          onClick={exportMessages}
-          className="bg-gray-600 text-white px-4 py-2 rounded"
-        >
-          대화 내역 다운로드
+          보내기
         </button>
       </div>
+      <button
+        onClick={exportMessages}
+        className="bg-gray-600 text-white px-4 py-2 rounded"
+      >
+        데이터 다운로드 (CSV)
+      </button>
     </div>
   );
 }
