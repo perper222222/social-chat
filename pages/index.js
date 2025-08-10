@@ -237,7 +237,8 @@ export default function Home() {
   if (!entered) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen px-4 bg-gray-50">
-        <p className="text-gray-600 mb-2">이 채팅방은 익명 채팅방입니다.</p>
+        <p className="text-gray-600 mb-2">이 플랫폼은 익명으로 운영되는 가상의 소셜 미디어 플랫폼입니다.
+사용자 ID(숫자)를 입력하시면 게시글 작성, 좋아요, 댓글 등 다양한 소셜 미디어 활동을 체험할 수 있습니다.</p>
         <input
           type="text"
           placeholder="숫자 신분 ID를 입력하세요"
