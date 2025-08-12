@@ -40,7 +40,7 @@ export default function Home() {
   const [openComments, setOpenComments] = useState({});
   const [commentsData, setCommentsData] = useState({});
 
-  const [countdown, setCountdown] = useState(240);
+  const [countdown, setCountdown] = useState(200);
 
   const isUserIdValid = /^\d+$/.test(userId);
   const isGroupNumberValid = /^[1-4]$/.test(groupNumber);
