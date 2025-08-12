@@ -33,7 +33,7 @@ export default function Home() {
   const [groupNumber, setGroupNumber] = useState("");
   const [opinion, setOpinion] = useState("");
   const [entered, setEntered] = useState(false);
-  const [opinionPosted, setOpinionPosted] = useState(false); // 是否发布了入场意见
+  const [opinionPosted, setOpinionPosted] = useState(false);
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -47,7 +47,7 @@ export default function Home() {
   const isGroupNumberValid = /^[1-4]$/.test(groupNumber);
   const isOpinionValid = opinion.trim().length > 0;
 
-  // 进入聊天室，先发入场意见，再进入
+  // 入场时先把意见作为普通帖子发出，再进入聊天室
   const enterChat = async () => {
     if (!(isUserIdValid && isGroupNumberValid && isOpinionValid)) return;
 
@@ -56,7 +56,7 @@ export default function Home() {
         userId,
         groupNumber,
         opinion,
-        text: `처음 의견: ${opinion}`, // 可根据需要改
+        text: opinion, // 直接用意见作为帖子的文本
         timestamp: serverTimestamp(),
         likes: [],
       });
@@ -68,7 +68,6 @@ export default function Home() {
     }
   };
 
-  // 监听消息，只有进入后监听
   useEffect(() => {
     if (!entered) return;
 
@@ -84,7 +83,6 @@ export default function Home() {
     return () => unsubscribe();
   }, [entered]);
 
-  // 默认展开所有评论
   useEffect(() => {
     if (!entered) return;
     setOpenComments(
@@ -95,7 +93,6 @@ export default function Home() {
     );
   }, [messages, entered]);
 
-  // 监听评论
   useEffect(() => {
     if (!entered) return;
 
@@ -403,7 +400,7 @@ export default function Home() {
               key={m.id}
               className="bg-gray-50 border rounded-lg p-4 flex flex-col shadow-sm"
             >
-              {/* 用户头像 + ID + group + opinion */}
+              {/* 用户头像 + ID + group */}
               <div className="flex items-center mb-3 space-x-3">
                 <div
                   className="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
@@ -417,12 +414,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 意见 */}
-              <div className="text-sm font-medium mb-2 whitespace-pre-wrap border-l-4 border-blue-400 pl-2 text-blue-700">
-                {m.opinion || "-"}
-              </div>
-
-              {/* 帖子内容 */}
+              {/* 意见（其实就是帖子的文本） */}
               <div className="text-gray-800 whitespace-pre-wrap mb-3">{m.text}</div>
 
               {/* 时间 */}
