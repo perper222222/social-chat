@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   collection,
   query,
@@ -29,26 +29,26 @@ const getAvatarColor = (userId) => {
 };
 
 export default function Home() {
-  // --- 登录状态 ---
+  // 登录状态
   const [userId, setUserId] = useState("");
   const [groupNum, setGroupNum] = useState("");
   const [entered, setEntered] = useState(false);
 
-  // --- 聊天状态 ---
+  // 聊天状态
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [commentInputs, setCommentInputs] = useState({});
   const [openComments, setOpenComments] = useState({});
   const [commentsData, setCommentsData] = useState({});
 
-  // 标识是否已经发过第一条消息（发布后加载别人消息）
+  // 标识是否已发第一条消息
   const [hasPostedFirstMsg, setHasPostedFirstMsg] = useState(false);
 
-  // 倒计时 240秒（4分钟）
+  // 4分钟倒计时
   const [timeLeft, setTimeLeft] = useState(240);
   const timerRef = useRef(null);
 
-  // --- 进入聊天后监听消息和评论 ---
+  // 监听消息，只有发布第一条消息后才订阅
   useEffect(() => {
     if (!entered || !hasPostedFirstMsg) return;
 
@@ -118,7 +118,7 @@ export default function Home() {
     }
   };
 
-  // 点赞
+  // 点赞切换
   const toggleLike = async (msg) => {
     const msgRef = doc(db, "messages", msg.id);
     const hasLiked = msg.likes?.includes(userId);
@@ -152,7 +152,7 @@ export default function Home() {
     }
   };
 
-  // 下载聊天记录（保持不变）
+  // 下载聊天记录
   const downloadChat = () => {
     if (messages.length === 0) return;
 
@@ -255,7 +255,7 @@ export default function Home() {
     }
   };
 
-  // 4分钟倒计时，从页面打开开始
+  // 倒计时管理
   useEffect(() => {
     if (!entered) {
       setTimeLeft(240);
@@ -273,7 +273,6 @@ export default function Home() {
             clearInterval(timerRef.current);
             timerRef.current = null;
             alert("시간이 종료되어 자동으로 로그아웃 됩니다.");
-            // 退出登录状态
             setEntered(false);
             setHasPostedFirstMsg(false);
             setUserId("");
@@ -298,7 +297,7 @@ export default function Home() {
     };
   }, [entered]);
 
-  // 验证输入数字，只允许数字
+  // 输入限制，只允许数字
   const handleUserIdChange = (e) => {
     const val = e.target.value;
     if (/^\d*$/.test(val)) setUserId(val);
@@ -358,7 +357,6 @@ export default function Home() {
     );
   }
 
-  // 进入后，还没发第一条消息时，只显示提示和自己发帖区
   if (entered && !hasPostedFirstMsg) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -383,124 +381,4 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex-grow flex flex-col items-center justify-center px-4 text-center max-w-lg mx-auto">
-          <p className="mb-6 text-gray-700 whitespace-pre-line">
-            {"아이디어를 입력하고 발행 버튼을 클릭하세요.\n발행 후에야 다른 사람들의 내용을 볼 수 있으며 상호작용이 가능합니다.\n이 과정은 총 3분 30초 동안 진행됩니다."}
-          </p>
-
-          <div className="w-full">
-            <textarea
-              rows={4}
-              placeholder="메시지를 입력하세요..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="w-full border p-3 rounded mb-4 resize-none"
-            />
-
-            <button
-              onClick={sendMessage}
-              className="bg-green-500 text-white px-6 py-2 rounded w-full"
-              disabled={!message.trim()}
-            >
-              전송
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 已发布第一条消息，显示完整聊天界面
-  return (
-    <div className="fixed top-0 left-0 w-full h-full flex flex-col bg-white">
-      {/* 顶部按钮区 */}
-      <div className="flex justify-between items-center p-4 border-b">
-        <div className="text-sm text-red-600 font-semibold select-none">
-          남은 시간: {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
-        </div>
-        <button
-          onClick={downloadChat}
-          className="bg-gray-500 text-white px-4 py-1 rounded hover:bg-gray-600"
-        >
-          다운로드
-        </button>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={clearChat}
-            className="bg-red-400 text-white px-3 py-1 rounded hover:bg-red-500"
-          >
-            채팅 기록 삭제
-          </button>
-          <span className="text-sm text-red-500 select-none">클릭하지 마세요</span>
-        </div>
-      </div>
-
-      {/* 帖子卡片布局 */}
-      <div
-        className="flex-grow overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        style={{ minHeight: 0 }}
-      >
-        {messages.length === 0 && (
-          <p className="text-center text-gray-400 mt-10 col-span-full">
-            채팅 기록이 없습니다.
-          </p>
-        )}
-
-        {messages.map((m) => {
-          const hasLiked = m.likes?.includes(userId);
-
-          return (
-            <div
-              key={m.id}
-              className="bg-gray-50 border rounded-lg p-4 flex flex-col shadow-sm"
-            >
-              {/* 用户头像 + ID */}
-              <div className="flex items-center mb-3">
-                <div
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
-                  style={{ backgroundColor: getAvatarColor(m.userId) }}
-                >
-                  {m.userId}
-                </div>
-                <span className="ml-3 font-semibold">{m.userId}</span>
-                <span className="ml-auto text-xs text-gray-400">그룹 {m.groupNum}</span>
-              </div>
-
-              {/* 帖子内容 */}
-              <div className="text-gray-800 whitespace-pre-wrap mb-3">{m.text}</div>
-
-              {/* 时间 */}
-              <div className="text-xs text-gray-500 mb-3">
-                {m.timestamp
-                  ? new Date(
-                      m.timestamp.seconds
-                        ? m.timestamp.seconds * 1000
-                        : m.timestamp
-                    ).toLocaleTimeString()
-                  : ""}
-              </div>
-
-              {/* 点赞 */}
-              <div className="flex items-center space-x-2 mb-3">
-                <button
-                  onClick={() => toggleLike(m)}
-                  className={`text-xl ${
-                    hasLiked ? "text-red-500" : "text-gray-400"
-                  }`}
-                >
-                  ❤️
-                </button>
-                <span className="text-sm">{m.likes?.length || 0}</span>
-              </div>
-
-              {/* 评论区 */}
-              <div className="border-t pt-2 mt-auto">
-                {commentsData[m.id]?.map((c) => (
-                  <div key={c.id} className="mb-1">
-                    <span className="font-semibold text-xs">{c.userId}</span>
-                    <p className="text-sm">{c.text}</p>
-                  </div>
-                ))}
-
-                {/* 评论输入框 */}
-                <div className="flex space
+        <div className="flex-grow flex flex-col items
