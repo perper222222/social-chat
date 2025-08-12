@@ -328,4 +328,4 @@ export default function Home() {
           <div className="mb-1 font-semibold">Group Number (1~4)</div>
           <input
             type="text"
-            placeholder="그룹 번호를 입력하세요
+            placeholder="그룹 번호를 입력하세요"
