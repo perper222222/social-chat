@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   collection,
   query,
@@ -29,11 +29,11 @@ const getAvatarColor = (userId) => {
 };
 
 export default function Home() {
-  // 基础状态
   const [userId, setUserId] = useState("");
   const [groupNumber, setGroupNumber] = useState("");
   const [opinion, setOpinion] = useState("");
   const [entered, setEntered] = useState(false);
+  const [opinionPosted, setOpinionPosted] = useState(false); // 是否发布了入场意见
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -41,15 +41,34 @@ export default function Home() {
   const [openComments, setOpenComments] = useState({});
   const [commentsData, setCommentsData] = useState({});
 
-  // 倒计时，单位秒，初始240秒（4分钟）
   const [countdown, setCountdown] = useState(240);
 
-  // 校验输入
   const isUserIdValid = /^\d+$/.test(userId);
   const isGroupNumberValid = /^[1-4]$/.test(groupNumber);
   const isOpinionValid = opinion.trim().length > 0;
 
-  // 进入聊天室时，启动监听消息
+  // 进入聊天室，先发入场意见，再进入
+  const enterChat = async () => {
+    if (!(isUserIdValid && isGroupNumberValid && isOpinionValid)) return;
+
+    try {
+      await addDoc(collection(db, "messages"), {
+        userId,
+        groupNumber,
+        opinion,
+        text: `처음 의견: ${opinion}`, // 可根据需要改
+        timestamp: serverTimestamp(),
+        likes: [],
+      });
+      setOpinionPosted(true);
+      setEntered(true);
+    } catch (error) {
+      console.error("의견 저장 실패:", error);
+      alert("의견 저장 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 监听消息，只有进入后监听
   useEffect(() => {
     if (!entered) return;
 
@@ -101,7 +120,6 @@ export default function Home() {
     };
   }, [openComments, entered]);
 
-  // 发送帖子消息（包含userid, group, opinion)
   const sendMessage = async () => {
     if (!message.trim()) return;
 
@@ -250,7 +268,7 @@ export default function Home() {
     }
   };
 
-  // 4分钟倒计时逻辑，进入后开始倒计时，每秒减1，到0停止
+  // 倒计时
   useEffect(() => {
     if (!entered) return;
 
@@ -267,7 +285,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [entered]);
 
-  // 倒计时格式 mm:ss
   const formatCountdown = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -328,7 +345,7 @@ export default function Home() {
 
         <button
           disabled={!(isUserIdValid && isGroupNumberValid && isOpinionValid)}
-          onClick={() => setEntered(true)}
+          onClick={enterChat}
           className={`w-full max-w-md px-4 py-2 rounded text-white ${
             isUserIdValid && isGroupNumberValid && isOpinionValid
               ? "bg-blue-500 hover:bg-blue-600"
