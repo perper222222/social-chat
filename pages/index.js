@@ -31,9 +31,8 @@ const getAvatarColor = (userId) => {
 export default function Home() {
   const [userId, setUserId] = useState("");
   const [groupNumber, setGroupNumber] = useState("");
-  const [opinion, setOpinion] = useState("");
   const [entered, setEntered] = useState(false);
-  const [opinionPosted, setOpinionPosted] = useState(false);
+  const [firstPostSent, setFirstPostSent] = useState(false);
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -45,27 +44,10 @@ export default function Home() {
 
   const isUserIdValid = /^\d+$/.test(userId);
   const isGroupNumberValid = /^[1-4]$/.test(groupNumber);
-  const isOpinionValid = opinion.trim().length > 0;
 
-  // 入场时先把意见作为普通帖子发出，再进入聊天室
-  const enterChat = async () => {
-    if (!(isUserIdValid && isGroupNumberValid && isOpinionValid)) return;
-
-    try {
-      await addDoc(collection(db, "messages"), {
-        userId,
-        groupNumber,
-        opinion,
-        text: opinion, // 直接用意见作为帖子的文本
-        timestamp: serverTimestamp(),
-        likes: [],
-      });
-      setOpinionPosted(true);
-      setEntered(true);
-    } catch (error) {
-      console.error("의견 저장 실패:", error);
-      alert("의견 저장 중 오류가 발생했습니다.");
-    }
+  const enterChat = () => {
+    if (!(isUserIdValid && isGroupNumberValid)) return;
+    setEntered(true);
   };
 
   useEffect(() => {
@@ -120,15 +102,20 @@ export default function Home() {
   const sendMessage = async () => {
     if (!message.trim()) return;
 
-    await addDoc(collection(db, "messages"), {
-      userId,
-      groupNumber,
-      opinion,
-      text: message,
-      timestamp: serverTimestamp(),
-      likes: [],
-    });
-    setMessage("");
+    try {
+      await addDoc(collection(db, "messages"), {
+        userId,
+        groupNumber,
+        text: message,
+        timestamp: serverTimestamp(),
+        likes: [],
+      });
+      setMessage("");
+      if (!firstPostSent) setFirstPostSent(true);
+    } catch (error) {
+      console.error("메시지 전송 실패:", error);
+      alert("메시지 전송 중 오류가 발생했습니다.");
+    }
   };
 
   const toggleLike = async (msg) => {
@@ -170,7 +157,7 @@ export default function Home() {
       ...messages.map((m) => commentsData[m.id]?.length || 0)
     );
 
-    const header = ["시간", "사용자ID", "그룹번호", "의견", "메시지", "좋아요수", "댓글수"];
+    const header = ["시간", "사용자ID", "그룹번호", "메시지", "좋아요수", "댓글수"];
 
     for (let i = 1; i <= maxComments; i++) {
       header.push(`댓글${i}`);
@@ -205,7 +192,6 @@ export default function Home() {
           time,
           m.userId,
           m.groupNumber || "",
-          m.opinion || "",
           m.text,
           m.likes?.length || 0,
           commentCount,
@@ -265,7 +251,6 @@ export default function Home() {
     }
   };
 
-  // 倒计时
   useEffect(() => {
     if (!entered) return;
 
@@ -273,6 +258,7 @@ export default function Home() {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(interval);
+          window.location.reload();
           return 0;
         }
         return c - 1;
@@ -293,9 +279,8 @@ export default function Home() {
       <div className="flex flex-col justify-center items-center min-h-screen px-4 bg-gray-50">
         <p className="text-gray-600 mb-4 text-center leading-relaxed">
           이 플랫폼은 익명으로 운영되는 가상의 소셜 미디어 플랫폼입니다.<br />
-          사용자 ID(숫자)와 그룹 번호(1~4)를 입력하시고,<br />
-          아래 큰 텍스트 박스에 질문에 대한 의견을 작성해주세요.<br />
-          모두 입력 후 채팅 입장 버튼을 누르면 다른 사람들의 의견도 보고 소통할 수 있습니다.
+          사용자 ID(숫자)와 그룹 번호(1~4)를 입력하세요.<br />
+          입장 후 첫 메시지를 보내야 다른 사람들의 게시글을 볼 수 있습니다.
         </p>
 
         <div className="flex items-center mb-3 w-full max-w-md">
@@ -329,22 +314,11 @@ export default function Home() {
           />
         </div>
 
-        <div className="w-full max-w-md mb-4">
-          <label className="block mb-1 font-medium">이 문제에 대한 의견을 입력하세요 (필수)</label>
-          <textarea
-            rows={5}
-            placeholder="여기에 의견을 입력하세요..."
-            value={opinion}
-            onChange={(e) => setOpinion(e.target.value)}
-            className="border p-2 rounded w-full resize-none"
-          />
-        </div>
-
         <button
-          disabled={!(isUserIdValid && isGroupNumberValid && isOpinionValid)}
+          disabled={!(isUserIdValid && isGroupNumberValid)}
           onClick={enterChat}
           className={`w-full max-w-md px-4 py-2 rounded text-white ${
-            isUserIdValid && isGroupNumberValid && isOpinionValid
+            isUserIdValid && isGroupNumberValid
               ? "bg-blue-500 hover:bg-blue-600"
               : "bg-gray-400 cursor-not-allowed"
           }`}
@@ -357,12 +331,10 @@ export default function Home() {
 
   return (
     <div className="fixed top-0 left-0 w-full h-full flex flex-col bg-white">
-      {/* 右上角倒计时 */}
       <div className="fixed top-2 right-4 bg-gray-800 text-white px-3 py-1 rounded font-mono text-sm z-50 select-none">
         남은 시간: {formatCountdown(countdown)}
       </div>
 
-      {/* 顶部按钮区 */}
       <div className="flex justify-between items-center p-4 border-b">
         <button
           onClick={downloadChat}
@@ -381,106 +353,106 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 帖子卡片布局 */}
-      <div
-        className="flex-grow overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        style={{ minHeight: 0 }}
-      >
-        {messages.length === 0 && (
-          <p className="text-center text-gray-400 mt-10 col-span-full">
-            채팅 기록이 없습니다.
-          </p>
-        )}
+      {!firstPostSent && (
+        <div className="flex-grow flex flex-col justify-center items-center text-gray-600 text-center px-4">
+          <p className="mb-4">아래 입력창에 첫 메시지를 보내야 다른 사람들의 게시글을 볼 수 있습니다.</p>
+        </div>
+      )}
 
-        {messages.map((m) => {
-          const hasLiked = m.likes?.includes(userId);
+      {firstPostSent && (
+        <div
+          className="flex-grow overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          style={{ minHeight: 0 }}
+        >
+          {messages.length === 0 && (
+            <p className="text-center text-gray-400 mt-10 col-span-full">
+              채팅 기록이 없습니다.
+            </p>
+          )}
 
-          return (
-            <div
-              key={m.id}
-              className="bg-gray-50 border rounded-lg p-4 flex flex-col shadow-sm"
-            >
-              {/* 用户头像 + ID + group */}
-              <div className="flex items-center mb-3 space-x-3">
-                <div
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
-                  style={{ backgroundColor: getAvatarColor(m.userId) }}
-                >
-                  {m.userId}
-                </div>
-                <div>
-                  <div className="font-semibold">{m.userId}</div>
-                  <div className="text-xs text-gray-500">그룹: {m.groupNumber || "-"}</div>
-                </div>
-              </div>
+          {messages.map((m) => {
+            const hasLiked = m.likes?.includes(userId);
 
-              {/* 意见（其实就是帖子的文本） */}
-              <div className="text-gray-800 whitespace-pre-wrap mb-3">{m.text}</div>
-
-              {/* 时间 */}
-              <div className="text-xs text-gray-500 mb-3">
-                {m.timestamp
-                  ? new Date(
-                      m.timestamp.seconds
-                        ? m.timestamp.seconds * 1000
-                        : m.timestamp
-                    ).toLocaleTimeString()
-                  : ""}
-              </div>
-
-              {/* 点赞 */}
-              <div className="flex items-center space-x-2 mb-3">
-                <button
-                  onClick={() => toggleLike(m)}
-                  className={`text-xl ${
-                    hasLiked ? "text-red-500" : "text-gray-400"
-                  }`}
-                >
-                  ❤️
-                </button>
-                <span className="text-sm">{m.likes?.length || 0}</span>
-              </div>
-
-              {/* 评论区 */}
-              <div className="border-t pt-2 mt-auto">
-                {commentsData[m.id]?.map((c) => (
-                  <div key={c.id} className="mb-1">
-                    <span className="font-semibold text-xs">{c.userId}</span>
-                    <p className="text-sm">{c.text}</p>
-                  </div>
-                ))}
-
-                {/* 评论输入框 */}
-                <div className="flex space-x-2 mt-2">
-                  <input
-                    type="text"
-                    placeholder="댓글을 입력하세요..."
-                    value={commentInputs[m.id] || ""}
-                    onChange={(e) =>
-                      setCommentInputs((prev) => ({
-                        ...prev,
-                        [m.id]: e.target.value,
-                      }))
-                    }
-                    className="border p-1 flex-grow rounded text-sm"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") sendComment(m.id);
-                    }}
-                  />
-                  <button
-                    onClick={() => sendComment(m.id)}
-                    className="bg-blue-500 text-white px-3 rounded text-sm"
+            return (
+              <div
+                key={m.id}
+                className="bg-gray-50 border rounded-lg p-4 flex flex-col shadow-sm"
+              >
+                <div className="flex items-center mb-3 space-x-3">
+                  <div
+                    className="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold"
+                    style={{ backgroundColor: getAvatarColor(m.userId) }}
                   >
-                    전송
+                    {m.userId}
+                  </div>
+                  <div>
+                    <div className="font-semibold">{m.userId}</div>
+                    <div className="text-xs text-gray-500">그룹: {m.groupNumber || "-"}</div>
+                  </div>
+                </div>
+
+                <div className="text-gray-800 whitespace-pre-wrap mb-3">{m.text}</div>
+
+                <div className="text-xs text-gray-500 mb-3">
+                  {m.timestamp
+                    ? new Date(
+                        m.timestamp.seconds
+                          ? m.timestamp.seconds * 1000
+                          : m.timestamp
+                      ).toLocaleTimeString()
+                    : ""}
+                </div>
+
+                <div className="flex items-center space-x-2 mb-3">
+                  <button
+                    onClick={() => toggleLike(m)}
+                    className={`text-xl ${
+                      hasLiked ? "text-red-500" : "text-gray-400"
+                    }`}
+                  >
+                    ❤️
                   </button>
+                  <span className="text-sm">{m.likes?.length || 0}</span>
+                </div>
+
+                <div className="border-t pt-2 mt-auto">
+                  {commentsData[m.id]?.map((c) => (
+                    <div key={c.id} className="mb-1">
+                      <span className="font-semibold text-xs">{c.userId}</span>
+                      <p className="text-sm">{c.text}</p>
+                    </div>
+                  ))}
+
+                  <div className="flex space-x-2 mt-2">
+                    <input
+                      type="text"
+                      placeholder="댓글을 입력하세요..."
+                      value={commentInputs[m.id] || ""}
+                      onChange={(e) =>
+                        setCommentInputs((prev) => ({
+                          ...prev,
+                          [m.id]: e.target.value,
+                        }))
+                      }
+                      className="border p-1 flex-grow rounded text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") sendComment(m.id);
+                      }}
+                    />
+                    <button
+                      onClick={() => sendComment(m.id)}
+                      className="bg-blue-500 text-white px-3 rounded text-sm"
+                    >
+                      전송
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* 底部发帖区 */}
       <div className="flex space-x-2 p-4 border-t">
         <input
           type="text"
