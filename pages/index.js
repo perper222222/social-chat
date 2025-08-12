@@ -41,14 +41,14 @@ export default function Home() {
   const [openComments, setOpenComments] = useState({});
   const [commentsData, setCommentsData] = useState({});
 
-  // 标识是否已发第一条消息
+  // 是否已发第一条消息，控制显示聊天内容
   const [hasPostedFirstMsg, setHasPostedFirstMsg] = useState(false);
 
   // 4分钟倒计时
   const [timeLeft, setTimeLeft] = useState(240);
   const timerRef = useRef(null);
 
-  // 监听消息，只有发布第一条消息后才订阅
+  // 登录后且已发第一条消息才订阅消息
   useEffect(() => {
     if (!entered || !hasPostedFirstMsg) return;
 
@@ -76,7 +76,7 @@ export default function Home() {
     );
   }, [messages, entered, hasPostedFirstMsg]);
 
-  // 监听评论
+  // 监听评论变化
   useEffect(() => {
     if (!entered || !hasPostedFirstMsg) return;
 
@@ -101,7 +101,7 @@ export default function Home() {
     };
   }, [openComments, entered, hasPostedFirstMsg]);
 
-  // 发送消息
+  // 发送消息函数
   const sendMessage = async () => {
     if (!message.trim()) return;
 
@@ -113,12 +113,10 @@ export default function Home() {
       likes: [],
     });
     setMessage("");
-    if (!hasPostedFirstMsg) {
-      setHasPostedFirstMsg(true);
-    }
+    if (!hasPostedFirstMsg) setHasPostedFirstMsg(true);
   };
 
-  // 点赞切换
+  // 点赞/取消点赞
   const toggleLike = async (msg) => {
     const msgRef = doc(db, "messages", msg.id);
     const hasLiked = msg.likes?.includes(userId);
@@ -217,7 +215,7 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  // 删除聊天记录
+  // 清除聊天记录
   const clearChat = async () => {
     const pwd = prompt(
       "채팅 기록을 삭제하려면 비밀번호를 입력하세요.\n(주의: 삭제 후 복구 불가)"
@@ -255,7 +253,7 @@ export default function Home() {
     }
   };
 
-  // 倒计时管理
+  // 倒计时逻辑
   useEffect(() => {
     if (!entered) {
       setTimeLeft(240);
@@ -297,7 +295,7 @@ export default function Home() {
     };
   }, [entered]);
 
-  // 输入限制，只允许数字
+  // 仅允许数字输入
   const handleUserIdChange = (e) => {
     const val = e.target.value;
     if (/^\d*$/.test(val)) setUserId(val);
@@ -307,6 +305,7 @@ export default function Home() {
     if (/^\d*$/.test(val)) setGroupNum(val);
   };
 
+  // 未登录界面：输入ID和Group
   if (!entered) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen px-4 bg-gray-50">
@@ -329,56 +328,4 @@ export default function Home() {
           <div className="mb-1 font-semibold">Group Number (1~4)</div>
           <input
             type="text"
-            placeholder="그룹 번호를 입력하세요 (1~4)"
-            value={groupNum}
-            onChange={handleGroupNumChange}
-            className="border p-2 rounded w-full"
-            maxLength={1}
-          />
-        </label>
-        <button
-          onClick={() => {
-            const groupNumber = parseInt(groupNum, 10);
-            if (!userId) {
-              alert("ID를 입력하세요.");
-              return;
-            }
-            if (!groupNum || isNaN(groupNumber) || groupNumber < 1 || groupNumber > 4) {
-              alert("그룹 번호는 1부터 4 사이의 숫자여야 합니다.");
-              return;
-            }
-            setEntered(true);
-          }}
-          className="bg-blue-500 text-white px-4 py-2 rounded w-full max-w-md"
-        >
-          채팅 입장
-        </button>
-      </div>
-    );
-  }
-
-  if (entered && !hasPostedFirstMsg) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        {/* 顶部倒计时 + 按钮 */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <div className="text-sm text-red-600 font-semibold select-none">
-            남은 시간: {Math.floor(timeLeft / 60)}분 {timeLeft % 60}초
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={downloadChat}
-              className="bg-gray-500 text-white px-4 py-1 rounded hover:bg-gray-600"
-            >
-              다운로드
-            </button>
-            <button
-              onClick={clearChat}
-              className="bg-red-400 text-white px-3 py-1 rounded hover:bg-red-500"
-            >
-              채팅 기록 삭제
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-grow flex flex-col items
+            placeholder="그룹 번호를 입력하세요
